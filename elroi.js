@@ -124,6 +124,8 @@
         var width = $paper.width() || $el.width(),
             height = $paper.height() || $el.height();
 
+        var idCounter = 0; //Used to create unique IDs in generateID method.
+
         /**
          * Get mouse position relative to the top left corner of the Elroi element.
          * @param e {Object} Mouse event object
@@ -131,10 +133,10 @@
          *                  y - y position relative to the top left corner of the Elroi element.
          */
         function getRelativeMousePosition (e) {
-            var elementOffset = $(element).offset();
+            var elementOffset = $el.offset();
             return {
-                x: e.clientX + $(document).scrollLeft() - elementOffset.left,
-                y: e.clientY + $(document).scrollTop() - elementOffset.top
+                x: e.clientX + $document.scrollLeft() - elementOffset.left,
+                y: e.clientY + $document.scrollTop() - elementOffset.top
             };
         }
 
@@ -168,15 +170,8 @@
          * @param length {Number} The length of the desired string. A length less than 1 will result in an empty string.
          * @return {String} A randomly generated alpha-numeric string of specified length.
          */
-        function generateId(length) {
-            var text = "",
-                possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-            for (var i=0; i < length; i++) {
-                text += possible.charAt(Math.floor(Math.random() * possible.length));
-            }
-
-            return text;
+        function generateId() {
+            return '_elroi_unique_id_' + (++idCounter);
         }
 
         /**
@@ -1594,7 +1589,16 @@
                         left: x
                     }, 1, function() {
                         var tipContent = graph.options.tooltip.formatter(graph.tooltips[index], graph.options.messages);
-                        graph.$tooltip.find('.elroi-tooltip-content').html(tipContent);
+                        var toolTipElement = graph.$tooltip.find('.elroi-tooltip-content');
+                        toolTipElement.html(tipContent);
+
+                        var tipContainer = toolTipElement.find('.elroi-tooltip-container');
+                        if (tipContainer) {
+                            var containerSize = tipContainer.width();
+                            if (containerSize > graph.options.tooltip.width) {
+                        	graph.$tooltip.width(containerSize + 20);
+                            }
+                        }
                     });
                 }
 
@@ -1680,7 +1684,8 @@
 
         var LOAD_ANIMATION_PROMISE;
 
-        var wedgeEventsEnabled;
+        var wedgeEventsEnabled,
+            wedgeEventsEnabledCounter = 0;
 
         var hitShield;
 
@@ -1775,7 +1780,7 @@
                 {radius: RADIUS, transform: [S11+CENTER_COORDINATES+'r'+ DEFAULT_ROTATION +','+CENTER_COORDINATES]},
                 ms || 1500,
                 'backOut'])
-                .done(regenerateTransformedWedgePaths, wedgeEventsEnable);
+                .always(regenerateTransformedWedgePaths, wedgeEventsEnable);
         }
 
         /**
@@ -1797,6 +1802,7 @@
                 newAttributes; //New segment and transform attributes for Raphael
 
             wedgeEventsDisable();
+
             for (i = 0; i < dataLength; i++) {
                 wedgeSize = 360 / total * data[i].value;
                 newAttributes = {segment: [center.x, center.y, wedges[i].attr('radius'), start, start += wedgeSize]};
@@ -1811,7 +1817,7 @@
             }
 
             return $.when.apply(null, $deferreds)
-                .done(regenerateTransformedWedgePaths, wedgeEventsEnable);
+                .always(regenerateTransformedWedgePaths, wedgeEventsEnable);
         }
 
         /**
@@ -2124,7 +2130,7 @@
             }
 
             return $.when($deferred)
-                .done(regenerateTransformedWedgePaths, wedgeEventsEnable);
+                .always(regenerateTransformedWedgePaths, wedgeEventsEnable);
         }
 
         /**
@@ -2254,18 +2260,29 @@
         }
 
         /**
-         * Enables wedge events
+         * Increments the wedgeEventsEnabledCounter, if the counter is non-negative, wedge events are enabled.
+         * @param force {boolean} if force is truth-y the wedgeEventsEnabledCounter will be reset to 0
+         *   and wedgeEventsEnabled hence will be set to true.
          */
-        function wedgeEventsEnable() {
-            wedgeEventsEnabled = true;
+        function wedgeEventsEnable(force) {
+            (force) ? wedgeEventsEnabledCounter = 0 : wedgeEventsEnabledCounter++;
+
+            if (wedgeEventsEnabledCounter >= 0) {
+                wedgeEventsEnabled = true;
+                wedgeEventsEnabledCounter = 0;
+            }
         }
 
         /**
-         * Disables wedge events
+         * Decrements the wedgeEventsEnabledCounter and disables wedge events.  If multiple calls to wedgeEventsDisable
+         * occur in sequence, a matching number of calls to wedgeEventsEnable need to occur before wedge events are
+         * enabled again.
          */
         function wedgeEventsDisable() {
+            wedgeEventsEnabledCounter--;
             wedgeEventsEnabled = false;
         }
+
 
         graph.ext.wedgeEventsEnable = wedgeEventsEnable;
         graph.ext.wedgeEventsDisable = wedgeEventsDisable;
