@@ -362,6 +362,7 @@
         monthNamesShort = options.monthNamesShort || MONTH_NAMES_SHORT;
         monthNamesLong = options.monthNamesLong || MONTH_NAMES_LONG;
         merid = options.meridian || MERIDIAN;
+        timeSeparator = options.customTimeSeparator || ':';
 
         for (i = 0; i < format.length; i++) {
             thisChar = format.charAt(i);
@@ -421,6 +422,8 @@
                 case 'a':
                     formattedDate += date.getHours() < 12 ? merid[0] : merid[1];
                     break;
+                case ':':
+                    formattedDate += timeSeparator;
                 default:
                     formattedDate += thisChar;
             }
